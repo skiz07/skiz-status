@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>skiz Store — status</title>
+    <meta name="description" content="Is skiz Store up? Live status, checked every 5 minutes from outside.">
+    <!-- this page lives on GitHub, not on the shop's server: it stays up when the shop is down -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html { -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #FAFBFD;
+            --surface: #FFFFFF;
+            --text: #1D1D1F;
+            --muted: #6E6E73;
+            --faint: #AEAEB2;
+            --accent: #296FCF;
+            --border: rgba(0, 0, 0, .08);
+            --up: #16A34A;
+            --down: #DC2626;
+            --slow: #6E6E73;
+            --bar-empty: #E5E5EA;
+            --state: var(--faint);
+            --state-rgb: 174, 174, 178;
+        }
+        body[data-state="up"]   { --state: var(--up);   --state-rgb: 22, 163, 74; }
+        body[data-state="down"] { --state: var(--down); --state-rgb: 220, 38, 38; }
+        body[data-state="slow"] { --state: var(--slow); --state-rgb: 110, 110, 115; }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-font-smoothing: antialiased;
+        }
+        html, body { overflow-x: clip; }
+
+        /* the same light and grid as the shop's 404, tinted by the current state */
+        .glow {
+            position: fixed; top: 42%; left: 50%;
+            width: 700px; height: 700px;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(var(--state-rgb), .10) 0%, rgba(var(--state-rgb), .035) 35%, transparent 70%);
+            pointer-events: none;
+            transition: background .4s ease;
+        }
+        .grid {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 0, 0, .035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, .035) 1px, transparent 1px);
+            background-size: 80px 80px;
+            -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, transparent 70%);
+                    mask-image: radial-gradient(ellipse at center, #000 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .page {
+            position: relative; z-index: 1;
+            width: min(760px, calc(100% - 32px));
+            margin: auto 0;
+            padding: 48px 0 32px;
+            text-align: center;
+        }
+
+        .pill {
+            display: inline-flex; align-items: center; gap: 9px;
+            padding: 8px 13px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .8);
+            color: var(--muted);
+            font-size: 12px; font-weight: 600;
+            letter-spacing: .04em; text-transform: uppercase;
+        }
+        .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--state);
+            box-shadow: 0 0 0 4px rgba(var(--state-rgb), .14), 0 0 12px rgba(var(--state-rgb), .5);
+        }
+        body[data-state="up"] .dot { animation: beat 2.4s ease-in-out infinite; }
+        @keyframes beat { 50% { box-shadow: 0 0 0 7px rgba(var(--state-rgb), .06), 0 0 14px rgba(var(--state-rgb), .35); } }
+
+        /* the big number: uptime over 90 days, with the outlined echo of the 404 */
+        .big {
+            position: relative;
+            display: inline-block;
+            font-size: clamp(84px, 17vw, 190px);
+            line-height: .85;
+            font-weight: 800;
+            letter-spacing: -.07em;
+            color: var(--text);
+            user-select: none;
+            font-variant-numeric: tabular-nums;
+        }
+        .big::after {
+            content: attr(data-echo);
+            position: absolute; inset: 0;
+            z-index: -1;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(var(--state-rgb), .45);
+            transform: translate(6px, 6px);
+        }
+        .big-label {
+            margin-top: 14px;
+            color: var(--faint);
+            font-size: 12px; font-weight: 700;
+            letter-spacing: .12em; text-transform: uppercase;
+        }
+
+        h1 {
+            margin-top: 38px;
+            font-size: clamp(26px, 4vw, 40px);
+            line-height: 1.1;
+            font-weight: 700;
+            letter-spacing: -.035em;
+        }
+        .description {
+            max-width: 520px;
+            margin: 14px auto 0;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        /* 90 days, one bar each: green = no downtime, red = some, grey = no data yet */
+        .card {
+            margin: 38px auto 0;
+            padding: 20px 22px 16px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+            text-align: left;
+        }
+        .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .card-name { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 700; }
+        .card-name .dot { width: 8px; height: 8px; }
+        .card-state { font-size: 13px; font-weight: 600; color: var(--state); }
+        .bars { display: grid; grid-template-columns: repeat(90, 1fr); gap: 2px; height: 34px; }
+        .bar { border-radius: 2px; background: var(--bar-empty); position: relative; }
+        .bar.ok   { background: var(--up); }
+        .bar.part { background: #F87171; }
+        .bar.bad  { background: var(--down); }
+        .bar:hover { opacity: .75; }
+        .bar[data-tip]:hover::after {
+            content: attr(data-tip);
+            position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+            padding: 6px 9px; border-radius: 8px;
+            background: var(--text); color: #fff;
+            font-size: 11.5px; font-weight: 600; white-space: nowrap; z-index: 2;
+        }
+        .bars-foot { display: flex; justify-content: space-between; margin-top: 9px; color: var(--faint); font-size: 11.5px; font-weight: 600; }
+
+        .meta { margin-top: 18px; color: var(--faint); font-size: 12px; font-weight: 600; }
+
+        .brand {
+            position: relative; z-index: 1;
+            padding: 0 0 26px;
+            color: rgba(0, 0, 0, .28);
+            font-size: 12px; font-weight: 700;
+            letter-spacing: .12em; text-transform: uppercase;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .brand:hover { color: rgba(0, 0, 0, .5); }
+
+        @media (max-width: 600px) {
+            .page { width: calc(100% - 32px); }
+            .pill { margin-bottom: 20px; }
+            .big { font-size: 22vw; }
+            h1 { margin-top: 30px; }
+            .description { font-size: 14px; }
+            .card { padding: 16px 14px 12px; }
+            .bars { grid-template-columns: repeat(45, 1fr); height: 30px; }
+            .bar.old { display: none; }                       /* phones: the last 45 days */
+            .brand { padding-bottom: 18px; }
+        }
+        @media (prefers-reduced-motion: reduce) { body[data-state="up"] .dot { animation: none; } }
+    </style>
+</head>
+<body data-state="loading">
+    <div class="grid" aria-hidden="true"></div>
+    <div class="glow" aria-hidden="true"></div>
+
+    <main class="page">
+        <div class="pill"><span class="dot"></span><span id="pill">System status · checking</span></div>
+
+        <div class="big" id="big" data-echo="—">—</div>
+        <div class="big-label">Uptime · last 90 days</div>
+
+        <h1 id="title">Checking the store…</h1>
+        <p class="description" id="desc">The store is checked from outside every five minutes.</p>
+
+        <section class="card" aria-label="Store">
+            <div class="card-head">
+                <div class="card-name"><span class="dot"></span>Store</div>
+                <div class="card-state" id="state">—</div>
+            </div>
+            <div class="bars" id="bars" role="img" aria-label="Daily availability, last 90 days"></div>
+            <div class="bars-foot"><span id="from">90 days ago</span><span>Today</span></div>
+        </section>
+
+        <p class="meta" id="meta"></p>
+    </main>
+
+    <a class="brand" href="https://test.skizstudio.com/">skiz Store</a>
+
+    <script>
+    (function () {
+        // data written by Upptime (GitHub Actions) into this repository; read straight from it,
+        // so the page is current without being rebuilt and never touches the shop's server
+        var RAW = 'https://raw.githubusercontent.com/skiz07/skiz-status/master/';
+        var SLUG = 'skiz-store';
+        var $ = function (id) { return document.getElementById(id); };
+
+        function get(path) {
+            return fetch(RAW + path + '?t=' + Date.now(), { cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); });
+        }
+
+        function ago(iso) {
+            var s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+            if (s < 90) return 'just now';
+            if (s < 5400) return Math.round(s / 60) + ' min ago';
+            return Math.round(s / 3600) + ' h ago';
+        }
+
+        function drawBars(downByDay, startTime) {
+            var bars = $('bars'); bars.innerHTML = '';
+            var start = startTime ? new Date(startTime) : null;
+            for (var i = 89; i >= 0; i--) {
+                var d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - i);
+                var key = d.toISOString().slice(0, 10);
+                var b = document.createElement('div');
+                b.className = 'bar' + (i >= 45 ? ' old' : '');
+                var label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                if (start && d < new Date(start.toDateString())) {
+                    b.setAttribute('data-tip', label + ' · no data');
+                } else {
+                    var m = downByDay[key] || 0;
+                    b.className += m === 0 ? ' ok' : (m >= 60 ? ' bad' : ' part');
+                    b.setAttribute('data-tip', label + (m === 0 ? ' · no downtime' : ' · down ' + m + ' min'));
+                }
+                bars.appendChild(b);
+            }
+        }
+
+        function show(state, now) {
+            document.body.setAttribute('data-state', state);
+            var text = {
+                up:   ['All systems operational', 'The store is up and answering.', 'Operational'],
+                slow: ['The store is slow right now', 'It answers, but slower than it should. We are on it.', 'Degraded'],
+                down: ['The store is down', 'We know about it and are working on it. Your orders and data are safe.', 'Down'],
+                unknown: ['Status unavailable', 'The latest check could not be read. Try again in a minute.', 'Unknown']
+            }[state];
+            $('pill').textContent = 'System status · ' + text[2];
+            $('title').textContent = text[0] + (state === 'up' ? '.' : '');
+            $('desc').textContent = text[1];
+            $('state').textContent = text[2];
+        }
+
+        function load() {
+            Promise.all([
+                get('history/' + SLUG + '.yml').catch(function () { return ''; }),
+                get('history/summary.json').then(JSON.parse).catch(function () { return []; })
+            ]).then(function (res) {
+                var yml = res[0], sum = (res[1] || []).filter(function (s) { return s.slug === SLUG; })[0] || {};
+                var field = function (k) { var m = yml.match(new RegExp('^' + k + ':\\s*(.+)$', 'm')); return m ? m[1].trim() : ''; };
+                var status = field('status');
+                show(status === 'up' ? 'up' : status === 'degraded' ? 'slow' : status === 'down' ? 'down' : 'unknown');
+
+                var up = sum.uptime || (status === 'up' ? '100%' : '—');
+                up = up.replace(/\.00%$/, '%');
+                $('big').textContent = up; $('big').setAttribute('data-echo', up);
+
+                drawBars(sum.dailyMinutesDown || {}, field('startTime'));
+                var t = field('lastUpdated'), rt = field('responseTime');
+                $('meta').textContent = t ? 'Last check ' + ago(t) + (rt ? ' · ' + rt + ' ms' : '') : '';
+            });
+        }
+
+        load();
+        setInterval(load, 60 * 1000);
+    })();
+    </script>
+</body>
+</html>
