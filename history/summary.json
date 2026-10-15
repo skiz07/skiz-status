@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "name": "skiz Store",
+    "url": "https://test.skizstudio.com/health",
+    "icon": "https://icons.duckduckgo.com/ip3/test.skizstudio.com.ico",
+    "slug": "skiz-store",
+    "status": "up",
+    "uptime": "100.00%",
+    "uptimeDay": "100.00%",
+    "uptimeWeek": "100.00%",
+    "uptimeMonth": "100.00%",
+    "uptimeYear": "100.00%",
+    "time": 533,
+    "timeDay": 533,
+    "timeWeek": 533,
+    "timeMonth": 533,
+    "timeYear": 533,
+    "dailyMinutesDown": {}
+  }
+]
