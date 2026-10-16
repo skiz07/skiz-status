@@ -285,13 +285,28 @@
                 $('big').textContent = up; $('big').setAttribute('data-echo', up);
 
                 drawBars(sum.dailyMinutesDown || {}, field('startTime'));
-                var t = field('lastUpdated'), rt = field('responseTime');
-                $('meta').textContent = t ? 'Last check ' + ago(t) + (rt ? ' · ' + rt + ' ms' : '') : '';
+                lastChange = field('lastUpdated');
+                showMeta();
             });
         }
 
-        load();
+        // Upptime writes the history file only when the state changes, so the time of the
+        // last check comes from its latest finished run (public API, 60 calls/h per visitor)
+        var lastChange = '', lastRun = '';
+        function showMeta() {
+            var t = lastRun > lastChange ? lastRun : lastChange;
+            $('meta').textContent = t ? 'Last check ' + ago(t) : '';
+        }
+        function loadRun() {
+            fetch('https://api.github.com/repos/skiz07/skiz-status/actions/workflows/uptime.yml/runs?status=success&per_page=1', { cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(function (j) { var w = (j.workflow_runs || [])[0]; if (w) { lastRun = w.updated_at; showMeta(); } })
+                .catch(function () {});
+        }
+
+        load(); loadRun();
         setInterval(load, 60 * 1000);
+        setInterval(loadRun, 5 * 60 * 1000);
     })();
     </script>
 </body>
