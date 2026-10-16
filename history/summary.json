@@ -5,16 +5,19 @@
     "icon": "https://icons.duckduckgo.com/ip3/test.skizstudio.com.ico",
     "slug": "skiz-store",
     "status": "down",
-    "uptime": "100.00%",
-    "uptimeDay": "100.00%",
-    "uptimeWeek": "100.00%",
-    "uptimeMonth": "100.00%",
-    "uptimeYear": "100.00%",
-    "time": 395,
-    "timeDay": 395,
-    "timeWeek": 395,
-    "timeMonth": 395,
-    "timeYear": 395,
-    "dailyMinutesDown": {}
+    "uptime": "43.73%",
+    "uptimeDay": "43.73%",
+    "uptimeWeek": "43.73%",
+    "uptimeMonth": "43.73%",
+    "uptimeYear": "43.73%",
+    "time": 318,
+    "timeDay": 318,
+    "timeWeek": 318,
+    "timeMonth": 318,
+    "timeYear": 318,
+    "dailyMinutesDown": {
+      "2026-10-16": 157,
+      "2026-10-15": 51
+    }
   }
 ]
