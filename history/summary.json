@@ -5,11 +5,11 @@
     "icon": "https://icons.duckduckgo.com/ip3/test.skizstudio.com.ico",
     "slug": "skiz-store",
     "status": "down",
-    "uptime": "51.31%",
+    "uptime": "50.52%",
     "uptimeDay": "51.98%",
-    "uptimeWeek": "51.31%",
-    "uptimeMonth": "51.31%",
-    "uptimeYear": "51.31%",
+    "uptimeWeek": "50.52%",
+    "uptimeMonth": "50.52%",
+    "uptimeYear": "50.52%",
     "time": 301,
     "timeDay": 278,
     "timeWeek": 301,
@@ -18,7 +18,7 @@
     "dailyMinutesDown": {
       "2026-10-16": 692,
       "2026-10-15": 51,
-      "2026-10-17": 121
+      "2026-10-17": 149
     }
   }
 ]
