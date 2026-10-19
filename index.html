@@ -24,6 +24,7 @@
             --up: #16A34A;
             --down: #DC2626;
             --slow: #6E6E73;
+            --asleep: #64748B;
             --bar-empty: #E5E5EA;
             --state: var(--faint);
             --state-rgb: 174, 174, 178;
@@ -31,6 +32,8 @@
         body[data-state="up"]   { --state: var(--up);   --state-rgb: 22, 163, 74; }
         body[data-state="down"] { --state: var(--down); --state-rgb: 220, 38, 38; }
         body[data-state="slow"] { --state: var(--slow); --state-rgb: 110, 110, 115; }
+        /* switched off on purpose (the server said so before it went): calm, not an outage */
+        body[data-state="asleep"], body[data-state="restarting"] { --state: var(--asleep); --state-rgb: 100, 116, 139; }
 
         body {
             min-height: 100vh;
@@ -262,6 +265,8 @@
                 up:   ['All systems operational', 'The store is up and answering.', 'Operational'],
                 slow: ['The store is slow right now', 'It answers, but slower than it should. We are on it.', 'Degraded'],
                 down: ['The store is down', 'We know about it and are working on it. Your orders and data are safe.', 'Down'],
+                asleep: ['The store is asleep', 'The server is switched off on purpose and will be back soon. Nothing is broken.', 'Asleep'],
+                restarting: ['The store is restarting', 'A planned restart — it will be back in a minute or two.', 'Restarting'],
                 unknown: ['Status unavailable', 'The latest check could not be read. Try again in a minute.', 'Unknown']
             }[state];
             $('pill').textContent = 'System status · ' + text[2];
@@ -278,7 +283,9 @@
                 var yml = res[0], sum = (res[1] || []).filter(function (s) { return s.slug === SLUG; })[0] || {};
                 var field = function (k) { var m = yml.match(new RegExp('^' + k + ':\\s*(.+)$', 'm')); return m ? m[1].trim() : ''; };
                 var status = field('status');
-                show(status === 'up' ? 'up' : status === 'degraded' ? 'slow' : status === 'down' ? 'down' : 'unknown');
+                // a planned window outranks what the last check saw: the store is off on purpose
+                if (sleepWin) show(/restart/i.test(sleepWin.title) ? 'restarting' : 'asleep');
+                else show(status === 'up' ? 'up' : status === 'degraded' ? 'slow' : status === 'down' ? 'down' : 'unknown');
 
                 var up = sum.uptime || (status === 'up' ? '100%' : '—');
                 up = up.replace(/\.00%$/, '%');
@@ -294,8 +301,27 @@
         // last check comes from its latest finished run (public API, 60 calls/h per visitor)
         var lastChange = '', lastRun = '';
         function showMeta() {
+            if (sleepWin) {
+                $('meta').textContent = 'Since ' + new Date(sleepWin.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                return;
+            }
             var t = lastRun > lastChange ? lastRun : lastChange;
             $('meta').textContent = t ? 'Last check ' + ago(t) : '';
+        }
+
+        // "asleep": the server opens an issue labelled sleep (+ maintenance, so Upptime opens
+        // no incident) just before a planned shutdown and closes it once it is back
+        // (the shop's docker/host/skiz-sleep.py). A crash or a power cut sends nothing.
+        var sleepWin = null;
+        function loadSleep() {
+            fetch('https://api.github.com/repos/skiz07/skiz-status/issues?state=open&labels=sleep&per_page=1', { cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(function (j) {
+                    var was = !!sleepWin;
+                    sleepWin = (j || []).filter(function (i) { return !i.pull_request; })[0] || null;
+                    if (was !== !!sleepWin || sleepWin) load();
+                })
+                .catch(function () {});
         }
         function loadRun() {
             fetch('https://api.github.com/repos/skiz07/skiz-status/actions/workflows/uptime.yml/runs?status=success&per_page=1', { cache: 'no-store' })
@@ -304,9 +330,11 @@
                 .catch(function () {});
         }
 
-        load(); loadRun();
+        // public API: 60 calls an hour per visitor — runs 12 + sleep 30
+        load(); loadRun(); loadSleep();
         setInterval(load, 60 * 1000);
         setInterval(loadRun, 5 * 60 * 1000);
+        setInterval(loadSleep, 2 * 60 * 1000);
     })();
     </script>
 </body>
