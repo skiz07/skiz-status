@@ -34,6 +34,8 @@
         body[data-state="slow"] { --state: var(--slow); --state-rgb: 110, 110, 115; }
         /* switched off on purpose (the server said so before it went): calm, not an outage */
         body[data-state="asleep"], body[data-state="restarting"] { --state: var(--asleep); --state-rgb: 100, 116, 139; }
+        /* not answering and GitHub wouldn't say whether it is planned: neither red nor calm */
+        body[data-state="unsure"] { --state: var(--slow); --state-rgb: 110, 110, 115; }
 
         body {
             min-height: 100vh;
@@ -267,6 +269,7 @@
                 down: ['The store is down', 'We know about it and are working on it. Your orders and data are safe.', 'Down'],
                 asleep: ['The store is asleep', 'The server is switched off on purpose and will be back soon. Nothing is broken.', 'Asleep'],
                 restarting: ['The store is restarting', 'A planned restart — it will be back in a minute or two.', 'Restarting'],
+                unsure: ['The store isn\'t answering', 'It may be switched off on purpose — we couldn\'t confirm that right now. Try again in a few minutes.', 'Not answering'],
                 unknown: ['Status unavailable', 'The latest check could not be read. Try again in a minute.', 'Unknown']
             }[state];
             $('pill').textContent = 'System status · ' + text[2];
@@ -283,9 +286,18 @@
                 var yml = res[0], sum = (res[1] || []).filter(function (s) { return s.slug === SLUG; })[0] || {};
                 var field = function (k) { var m = yml.match(new RegExp('^' + k + ':\\s*(.+)$', 'm')); return m ? m[1].trim() : ''; };
                 var status = field('status');
-                // a planned window outranks what the last check saw: the store is off on purpose
-                if (sleepWin) show(/restart/i.test(sleepWin.title) ? 'restarting' : 'asleep');
-                else show(status === 'up' ? 'up' : status === 'degraded' ? 'slow' : status === 'down' ? 'down' : 'unknown');
+                lastStatus = status;
+                if (status === 'down') {
+                    // not answering: switched off on purpose (a planned window) or really down?
+                    if (sleepKnown === 'open') show(/restart/i.test(sleepWin.title) ? 'restarting' : 'asleep');
+                    else if (sleepKnown === 'none') show('down');
+                    else if (sleepAskedAt) show('unsure');        // GitHub didn't tell us: never claim "down" blindly
+                    // (the very first time it stays on "Checking…" until GitHub answers)
+                    if (Date.now() - sleepAskedAt > 110 * 1000) loadSleep();
+                } else {
+                    sleepWin = null; sleepKnown = '';             // answering: whatever the window says, it is up
+                    show(status === 'up' ? 'up' : status === 'degraded' ? 'slow' : 'unknown');
+                }
 
                 var up = sum.uptime || (status === 'up' ? '100%' : '—');
                 up = up.replace(/\.00%$/, '%');
@@ -299,9 +311,9 @@
 
         // Upptime writes the history file only when the state changes, so the time of the
         // last check comes from its latest finished run (public API, 60 calls/h per visitor)
-        var lastChange = '', lastRun = '';
+        var lastChange = '', lastRun = '', lastStatus = '';
         function showMeta() {
-            if (sleepWin) {
+            if (sleepKnown === 'open' && sleepWin) {
                 $('meta').textContent = 'Since ' + new Date(sleepWin.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
                 return;
             }
@@ -312,16 +324,33 @@
         // "asleep": the server opens an issue labelled sleep (+ maintenance, so Upptime opens
         // no incident) just before a planned shutdown and closes it once it is back
         // (the shop's docker/host/skiz-sleep.py). A crash or a power cut sends nothing.
-        var sleepWin = null;
+        // Asked only while the store isn't answering. GitHub allows 60 such questions an
+        // hour per address — on mobile data thousands of phones share one, so the answer
+        // may be a refusal: then the page says it can't tell (never "down" blindly) and
+        // falls back on what this browser last learnt.
+        var sleepWin = null, sleepKnown = '', sleepAskedAt = 0;   // sleepKnown: 'open' | 'none' | '' (don't know)
+        function remember(v) { try { localStorage.setItem('skizSleep', JSON.stringify(v)); } catch (e) {} }
+        function recall() { try { return JSON.parse(localStorage.getItem('skizSleep') || 'null'); } catch (e) { return null; } }
         function loadSleep() {
+            sleepAskedAt = Date.now();
             fetch('https://api.github.com/repos/skiz07/skiz-status/issues?state=open&labels=sleep&per_page=1', { cache: 'no-store' })
                 .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
                 .then(function (j) {
-                    var was = !!sleepWin;
                     sleepWin = (j || []).filter(function (i) { return !i.pull_request; })[0] || null;
-                    if (was !== !!sleepWin || sleepWin) load();
+                    sleepKnown = sleepWin ? 'open' : 'none';
+                    remember({ known: sleepKnown, win: sleepWin ? { title: sleepWin.title, created_at: sleepWin.created_at } : null, at: Date.now() });
+                    if (lastStatus === 'down') load();
                 })
-                .catch(function () {});
+                .catch(function () {
+                    // a window this browser saw within the last 36 h (its longest) still counts
+                    var m = recall();
+                    if (m && m.known === 'open' && m.win && Date.now() - new Date(m.win.created_at).getTime() < 36 * 3600 * 1000) {
+                        sleepWin = m.win; sleepKnown = 'open';
+                    } else {
+                        sleepKnown = '';
+                    }
+                    if (lastStatus === 'down') load();
+                });
         }
         function loadRun() {
             fetch('https://api.github.com/repos/skiz07/skiz-status/actions/workflows/uptime.yml/runs?status=success&per_page=1', { cache: 'no-store' })
@@ -330,11 +359,11 @@
                 .catch(function () {});
         }
 
-        // public API: 60 calls an hour per visitor — runs 12 + sleep 30
-        load(); loadRun(); loadSleep();
+        // public API: 60 calls an hour per address — runs 12, plus the sleep question
+        // at most every 2 minutes and only while the store isn't answering (load() asks)
+        load(); loadRun();
         setInterval(load, 60 * 1000);
         setInterval(loadRun, 5 * 60 * 1000);
-        setInterval(loadSleep, 2 * 60 * 1000);
     })();
     </script>
 </body>
