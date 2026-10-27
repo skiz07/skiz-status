@@ -1,7 +1,7 @@
 url: https://test.skizstudio.com/health
-status: up
-code: 200
-responseTime: 619
-lastUpdated: 2026-10-27T01:57:13.801Z
+status: down
+code: 502
+responseTime: 765
+lastUpdated: 2026-10-27T15:41:13.076Z
 startTime: 2026-10-15T20:27:13.084Z
 generator: Upptime <https://github.com/upptime/upptime>
