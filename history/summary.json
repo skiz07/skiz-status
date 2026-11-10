@@ -4,17 +4,17 @@
     "url": "https://test.skizstudio.com/health",
     "icon": "https://icons.duckduckgo.com/ip3/test.skizstudio.com.ico",
     "slug": "skiz-store",
-    "status": "down",
-    "uptime": "94.37%",
-    "uptimeDay": "100.00%",
-    "uptimeWeek": "100.00%",
-    "uptimeMonth": "94.37%",
-    "uptimeYear": "94.37%",
-    "time": 677,
-    "timeDay": 162,
-    "timeWeek": 443,
-    "timeMonth": 677,
-    "timeYear": 677,
+    "status": "up",
+    "uptime": "94.35%",
+    "uptimeDay": "99.32%",
+    "uptimeWeek": "99.90%",
+    "uptimeMonth": "94.35%",
+    "uptimeYear": "94.35%",
+    "time": 678,
+    "timeDay": 273,
+    "timeWeek": 468,
+    "timeMonth": 678,
+    "timeYear": 678,
     "dailyMinutesDown": {
       "2026-10-16": 692,
       "2026-10-15": 51,
@@ -22,7 +22,8 @@
       "2026-10-18": 496,
       "2026-10-27": 90,
       "2026-10-28": 10,
-      "2026-11-03": 4
+      "2026-11-03": 4,
+      "2026-11-10": 10
     }
   }
 ]
