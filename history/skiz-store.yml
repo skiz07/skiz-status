@@ -1,7 +1,7 @@
 url: https://test.skizstudio.com/health
-status: degraded
+status: down
 code: 530
-responseTime: 13953
-lastUpdated: 2026-11-16T17:51:26.894Z
+responseTime: 122
+lastUpdated: 2026-11-16T17:56:10.830Z
 startTime: 2026-10-15T20:27:13.084Z
 generator: Upptime <https://github.com/upptime/upptime>
