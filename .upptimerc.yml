@@ -6,7 +6,7 @@ repo: skiz-status
 sites:
   - name: skiz Store
     slug: skiz-store
-    url: https://test.skizstudio.com/health
+    url: https://skizstore.co.il/health
     expectedStatusCodes:
       - 200
     maxResponseTime: 5000
